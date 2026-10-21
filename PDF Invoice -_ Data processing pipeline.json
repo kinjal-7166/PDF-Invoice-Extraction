@@ -1,0 +1,314 @@
+{
+  "name": "PDF Invoice -> Data processing pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Invoice PDF ",
+        "formDescription": "Upload your invoice pdf for data cleaning and processing.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Invoice PDF",
+              "fieldType": "file",
+              "acceptFileTypes": ".pdf",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "80e62be2-57a6-4d1f-bf19-acc1cf47154e",
+      "name": "On form submission",
+      "webhookId": "d0499ef6-ceda-48bf-8749-cdef3a986eec"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "Invoice_PDF",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "383c3654-3cc6-417c-b2d7-ffb1748e5a6c",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "models/gemini-3-flash-preview"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are an invoice data extraction assistant.",
+              "role": "model"
+            },
+            {
+              "content": "=Extract the following information from the invoice text:\n\n- invoice_number\n- invoice_date\n- vendor_name\n- customer_name\n- customer_address\n- salesperson\n- po_number\n- payment_terms\n- items\n- grand_total\n\nFor the \"items\" field, return an array of objects.\n\nEvery item MUST use exactly these field names:\n- item_name\n- quantity\n- unit_price\n- total_price\n\nDo not use \"description\" or any other field name.\n\nIf a value is not present in the invoice, return null.\n\nReturn ONLY valid JSON. Do not use Markdown or code fences.\n\nUse exactly this JSON structure:\n\n{\n  \"invoice_number\": \"\",\n  \"invoice_date\": \"\",\n  \"vendor_name\": \"\",\n  \"customer_name\": \"\",\n  \"customer_address\": \"\",\n  \"salesperson\": null,\n  \"po_number\": null,\n  \"payment_terms\": \"\",\n  \"items\": [\n    {\n      \"item_name\": \"\",\n      \"quantity\": 0,\n      \"unit_price\": 0,\n      \"total_price\": 0\n    }\n  ],\n  \"grand_total\": 0\n}\n\nInvoice text:\n{{ $json.text }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "a00fd254-3aaa-4c8d-bf18-203e97bbd4b3",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "NhxdqAVxajSI96wq",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let output = $input.first().json.content.parts[0].text;\n\noutput = output\n  .replace(/```json/g, '')\n  .replace(/```/g, '')\n  .trim();\n\nconst data = JSON.parse(output);\n\nconst items = data.items || [];\n\nreturn [\n  ...items.map((item, index) => ({\n    json: {\n      invoice_number: index === 0 ? data.invoice_number : \"\",\n      invoice_date: index === 0 ? data.invoice_date : \"\",\n      vendor_name: index === 0 ? data.vendor_name : \"\",\n      customer_name: index === 0 ? data.customer_name : \"\",\n      customer_address: index === 0 ? data.customer_address : \"\",\n      salesperson: index === 0 ? data.salesperson : \"\",\n      po_number: index === 0 ? data.po_number : \"\",\n      payment_terms: index === 0 ? data.payment_terms : \"\",\n\n      item_description: item.item_name,\n      quantity: item.quantity,\n      unit_price: item.unit_price,\n      item_total: item.total_price\n    }\n  })),\n\n  {\n    json: {\n      invoice_number: \"\",\n      invoice_date: \"\",\n      vendor_name: \"\",\n      customer_name: \"\",\n      customer_address: \"\",\n      salesperson: \"\",\n      po_number: \"\",\n      payment_terms: \"\",\n\n      item_description: \"GRAND TOTAL\",\n      quantity: \"\",\n      unit_price: \"\",\n      item_total: data.grand_total\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        0
+      ],
+      "id": "18460983-e087-4dba-813a-8187f6857979",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "11BNUlO3ZuniFX1nE0ZUOnUBobRlu0huDvY1ti_w9Rr0",
+          "mode": "list",
+          "cachedResultName": "Invoice Item Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11BNUlO3ZuniFX1nE0ZUOnUBobRlu0huDvY1ti_w9Rr0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1937722293,
+          "mode": "list",
+          "cachedResultName": "Sheet2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11BNUlO3ZuniFX1nE0ZUOnUBobRlu0huDvY1ti_w9Rr0/edit#gid=1937722293"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Invoice Number": "={{ $json.invoice_number }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Invoice Number",
+              "displayName": "Invoice Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Invoice Date",
+              "displayName": "Invoice Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Vendor",
+              "displayName": "Vendor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Customer",
+              "displayName": "Customer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Customer Address",
+              "displayName": "Customer Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Salesperson",
+              "displayName": "Salesperson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "PO Number",
+              "displayName": "PO Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Payment Terms",
+              "displayName": "Payment Terms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Item Description",
+              "displayName": "Item Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Quantity",
+              "displayName": "Quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Unit Price",
+              "displayName": "Unit Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Item Total",
+              "displayName": "Item Total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        976,
+        0
+      ],
+      "id": "bc08ad25-90d6-4086-a3cc-4e845bb7b504",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "l9kVnxIonyEKrg4U",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Kolkata",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "179f3751-45cc-4b90-8d5c-d0088dace6f0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "33ad02305634dfda1ffe1af0dd3c7725614bb7fc1ea1c08d28296b94639d0777"
+  },
+  "id": "vRlioYsewV8ykJsg",
+  "tags": []
+}
