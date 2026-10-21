@@ -6,7 +6,7 @@ An end-to-end n8n workflow that turns invoice PDFs into structured data. Upload 
 
 1. **Form trigger** – accepts an invoice PDF upload.
 2. **Text extraction** – pulls the raw text out of the PDF.
-3. **Gemini API (HTTP Request)** – prompts the model to return structured JSON with:
+3. **Gemini API** – prompts the model to return structured JSON with:
    - Invoice number
    - Date
    - Customer
